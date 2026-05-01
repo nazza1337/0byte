@@ -1,0 +1,207 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>/0byte/ — (0SPM)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Chats">☰</button>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h1 class="app-title">/0byte/</h1>
+        <div class="header-actions">
+          <button id="new-chat-btn" class="icon-btn" title="New chat">+</button>
+          <button onclick="showSettings()" class="icon-btn" title="Settings">⚙</button>
+        </div>
+      </div>
+      <div class="contact-list" id="contact-list"></div>
+      <div class="sidebar-footer">
+        <span id="online-status">⚪ Offline</span>
+      </div>
+    </aside>
+
+    <main class="main hidden" id="main-chat">
+      <div class="chat-header">
+        <div class="chat-header-info">
+          <span class="chat-avatar" id="chat-avatar"></span>
+          <div>
+            <div class="chat-name" id="chat-name">Select a chat</div>
+            <div class="chat-status" id="chat-status"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="restore-panel" id="restore-panel">
+        <div class="alert alert-warning">
+          ⚠️ Session is inactive. 
+          <button onclick="restoreChat()" class="btn-primary" style="margin-left: 12px; padding: 8px 16px;">Reconnect</button>
+        </div>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="empty-state">
+          <div class="empty-icon">💬</div>
+          <p>Select or create a new chat</p>
+        </div>
+      </div>
+
+      <div class="key-display">
+        <div class="key-row">
+          <span class="key-label">Your key:</span>
+          <code class="key-value" id="my-key-display">none</code>
+        </div>
+        <div class="key-row">
+          <span class="key-label">Partner key:</span>
+          <code class="key-value" id="partner-key-display">(waiting...)</code>
+        </div>
+      </div>
+
+      <div class="message-input-container">
+        <input type="file" id="image-input" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+        <button class="attach-btn" onclick="document.getElementById('image-input').click()" title="Attach image">📎</button>
+        <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
+        <button id="send-btn" onclick="sendMessage()" class="send-btn" title="Send">
+          <span class="send-icon">➤</span>
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- New chat modal -->
+  <div class="modal hidden" id="new-chat-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>New chat</h2>
+        <button onclick="closeNewChat()" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="role-select-section">
+          <div class="chat-role-options">
+            <button onclick="startHostFlow()" class="role-card">
+              <span class="role-icon">➕</span>
+              <span class="role-title">Create chat</span>
+              <span class="role-desc">I invite a friend</span>
+            </button>
+            <button onclick="startJoinFlow()" class="role-card">
+              <span class="role-icon">🔗</span>
+              <span class="role-title">Join</span>
+              <span class="role-desc">I have an invitation</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="host-flow" class="hidden">
+          <div class="step-indicator">You are creating a chat</div>
+          <div id="host-invite-area" class="step-content">
+            <div class="alert alert-info">Share this code with your friend</div>
+            <div class="sdp-word-display" id="host-offer-words"></div>
+            <div class="button-group">
+              <button onclick="showQRForHostOffer()" class="btn-secondary">📱 QR code</button>
+              <button onclick="copyHostOffer()" class="btn-secondary">📋 Copy</button>
+              <button onclick="shareHostOffer()" class="btn-secondary" id="share-host-btn" style="display:none;">📤 Share</button>
+            </div>
+            <details>
+              <summary>Show technical code</summary>
+              <textarea id="host-offer-display" class="sdp-input" readonly rows="4"></textarea>
+            </details>
+          </div>
+          <div id="host-response-area" class="step-content">
+            <div class="divider"><span>and paste friend's answer</span></div>
+            <button onclick="document.getElementById('host-answer-qr-file').click()" class="btn-secondary" style="width:100%;margin-bottom:8px;">📷 Upload answer screenshot</button>
+            <input type="file" id="host-answer-qr-file" accept="image/*" style="display:none;" onchange="handleHostAnswerQRScan(event)">
+            <button onclick="pasteFromClipboard('host-answer-input')" class="btn-secondary" style="width:100%;margin-bottom:8px;">📋 Paste text from clipboard</button>
+            <div id="host-paste-zone" class="paste-zone" tabindex="0" style="margin-bottom: 8px;">
+              📋 Paste answer screenshot (Ctrl+V)
+            </div>
+            <textarea id="host-answer-input" class="sdp-input" placeholder="Paste the answer received from friend..."></textarea>
+            <button onclick="hostSubmitAnswer()" class="btn-primary" id="host-connect-btn" disabled>Connect</button>
+            <button onclick="resetToRoleSelect()" class="btn-text">← Back</button>
+          </div>
+          <div id="host-waiting" class="hidden">
+            <div class="alert alert-warning">Waiting for connection...</div>
+          </div>
+        </div>
+
+        <div id="join-flow" class="hidden">
+          <div class="step-indicator">You are joining</div>
+          <div id="join-input-area" class="step-content">
+            <div class="alert alert-info">Paste friend's invitation</div>
+            <button onclick="document.getElementById('join-qr-file').click()" class="btn-secondary" style="width:100%;margin-bottom:8px;">📷 Upload QR screenshot</button>
+            <input type="file" id="join-qr-file" accept="image/*" style="display:none;" onchange="handleJoinQRScan(event)">
+            <button onclick="pasteFromClipboard('join-offer-input')" class="btn-secondary" style="width:100%;margin-bottom:8px;">📋 Paste text from clipboard</button>
+            <div id="join-paste-zone" class="paste-zone" tabindex="0" style="margin-bottom: 8px;">
+              📋 Paste invitation screenshot (Ctrl+V)
+            </div>
+            <textarea id="join-offer-input" class="sdp-input" placeholder="Paste the code received from friend..."></textarea>
+            <button onclick="joinSubmitOffer()" class="btn-primary" id="join-generate-btn" disabled>Generate answer</button>
+            <button onclick="resetToRoleSelect()" class="btn-text">← Back</button>
+          </div>
+          <div id="join-response-area" class="step-content hidden">
+            <div class="alert alert-success">Your answer is ready!</div>
+            <div class="sdp-word-display" id="join-answer-words"></div>
+            <div class="button-group">
+              <button onclick="copyJoinAnswer()" class="btn-secondary">📋 Copy</button>
+              <button onclick="shareJoinAnswer()" class="btn-secondary" id="share-join-btn" style="display:none;">📤 Share</button>
+              <button onclick="showQRForJoinAnswer()" class="btn-secondary">📱 QR code of answer</button>
+            </div>
+            <details>
+              <summary>Show technical code</summary>
+              <textarea id="join-answer-display" class="sdp-input" readonly rows="4"></textarea>
+            </details>
+            <div class="alert alert-warning">Send this answer to the chat creator and wait for connection</div>
+          </div>
+          <div id="join-waiting" class="hidden">
+            <div class="alert alert-warning">Waiting for connection...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div class="modal hidden" id="settings-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button onclick="closeSettings()" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="name-input">Name:</label>
+          <input type="text" id="name-input" placeholder="Your name" maxlength="30">
+        </div>
+        <div class="form-group">
+          <label for="avatar-input">Avatar (emoji):</label>
+          <input type="text" id="avatar-input" placeholder="😎" maxlength="2">
+        </div>
+        <div class="form-group toggle-group">
+          <label for="theme-toggle">Dark theme</label>
+          <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
+        </div>
+        <div class="divider"><span>Danger zone</span></div>
+        <div class="button-group">
+          <button onclick="deleteAllChats()" class="btn-danger" style="color: #ef4444; border-color: #ef4444;">🗑 Delete all chats</button>
+        </div>
+        <div class="button-group" style="margin-top: 16px;">
+          <button onclick="saveSettings()" class="btn-primary">Save</button>
+          <button onclick="closeSettings()" class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script src="crypto.js"></script>
+  <script src="webrtc.js"></script>
+  <script src="ui.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
